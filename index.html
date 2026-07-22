@@ -6,17 +6,24 @@
     <title>DueDiligence AI</title>
     <link rel="stylesheet" href="style.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <!-- PDF.js for text extraction -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <!-- PDF.js for text extraction — pinned with Subresource Integrity (SRI) so a
+         compromised CDN cannot inject arbitrary code. -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"
+            integrity="sha384-/1qUCSGwTur9vjf/z9lmu/eCUYbpOTgSjmpbMQZ1/CtX2v/WcAIKqRv+U1DUCG6e"
+            crossorigin="anonymous" referrerpolicy="no-referrer"></script>
     <script>
         pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
     </script>
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; worker-src 'self' blob: https://cdnjs.cloudflare.com; connect-src 'self' https://api.groq.com">
+    <meta name="theme-color" content="#0b0f1a">
+    <meta name="description" content="AI-powered due diligence — extract structured metrics from pitch decks and financial PDFs with a document-grounded Q&A.">
+    <link rel="icon" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj48dGV4dCB5PSIuOWVtIiBmb250LXNpemU9IjkwIj7wn5SNPC90ZXh0Pjwvc3ZnPg==">
 </head>
 <body>
     <nav class="navbar">
         <div class="nav-left">
             <div class="logo">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+                <svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
                 DueDiligence AI
             </div>
             <button class="btn btn-primary" id="btn-new-analysis">New Analysis</button>
@@ -37,7 +44,7 @@
             <div class="upload-zone" id="upload-zone">
                 <input type="file" id="file-input" accept=".pdf,.txt,.docx" hidden>
                 <div class="upload-content">
-                    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+                    <svg aria-hidden="true" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
                     <p>Drag & drop files here</p>
                     <span class="upload-link" id="upload-link">or click to browse</span>
                     <p class="upload-hint">Accepts PDF, TXT (Max 5MB)</p>
@@ -91,7 +98,7 @@
                             <div class="message system">Ask questions about the uploaded documents. Example: "What is the primary risk mentioned?"</div>
                         </div>
                         <div class="qa-input-container">
-                            <input type="text" id="qa-input" placeholder="Ask a question about the document...">
+                            <input aria-label="Ask a question about the document..." type="text" id="qa-input" placeholder="Ask a question about the document...">
                             <button id="qa-submit" class="btn btn-primary">Ask</button>
                         </div>
                     </div>
@@ -112,7 +119,7 @@
         <div class="modal-content">
             <h3>Groq API Key</h3>
             <p>Enter your Groq API key to enable AI features. It will be stored locally in your browser.</p>
-            <input type="password" id="api-key-input" placeholder="gsk_...">
+            <input aria-label="gsk_..." type="password" id="api-key-input" placeholder="gsk_...">
             <div class="modal-actions">
                 <button class="btn btn-outline" id="btn-close-modal">Cancel</button>
                 <button class="btn btn-primary" id="btn-save-modal">Save</button>

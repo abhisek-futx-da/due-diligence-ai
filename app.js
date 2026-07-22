@@ -1,3 +1,4 @@
+'use strict';
 /**
  * DueDiligence AI - Main Application Logic
  * Pure Vanilla JS, no frameworks.
@@ -237,14 +238,18 @@ async function analyzeDocument(doc) {
         }
 
         const data = await response.json();
-        const content = data.choices[0].message.content.trim();
-        
-        // Parse JSON (handle potential markdown formatting from LLM)
-        let jsonStr = content;
-        if (jsonStr.startsWith('```json')) {
-            jsonStr = jsonStr.substring(7, jsonStr.length - 3);
+        const content = data?.choices?.[0]?.message?.content?.trim();
+        if (!content) {
+            throw new Error('Empty response from API');
         }
-        
+
+        // The model is asked for raw JSON but sometimes wraps it in a markdown
+        // code fence. Strip any ```/```json fence, then parse.
+        const jsonStr = content
+            .replace(/^```(?:json)?\s*/i, '')
+            .replace(/\s*```$/, '')
+            .trim();
+
         doc.analysis = JSON.parse(jsonStr);
         renderAnalysis(doc);
 
@@ -271,14 +276,14 @@ function renderDocList() {
         el.className = `doc-item ${doc.id === state.selectedDocId ? 'selected' : ''}`;
         el.innerHTML = `
             <div class="doc-info">
-                <svg class="doc-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+                <svg aria-hidden="true" class="doc-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
                 <div class="doc-details">
-                    <span class="doc-name" title="${doc.name}">${doc.name}</span>
-                    <span class="doc-meta">${doc.size} • ${doc.uploadedAt}</span>
+                    <span class="doc-name" title="${escapeHtml(doc.name)}">${escapeHtml(doc.name)}</span>
+                    <span class="doc-meta">${escapeHtml(doc.size)} • ${escapeHtml(doc.uploadedAt)}</span>
                 </div>
             </div>
             <button class="btn btn-danger" onclick="event.stopPropagation(); deleteDocument('${doc.id}')">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
             </button>
         `;
         el.addEventListener('click', () => selectDocument(doc.id));
@@ -324,36 +329,40 @@ function renderAnalysis(doc) {
     
     if (!doc.analysis) return;
 
-    // Overview Tab
+    // Overview Tab. `doc.analysis` originates from an LLM response, so every
+    // field is untrusted and must be escaped. Guard the list fields too, since
+    // the model may return a non-array despite the requested schema.
+    const highlights = Array.isArray(doc.analysis.keyHighlights) ? doc.analysis.keyHighlights : [];
+    const risks = Array.isArray(doc.analysis.risks) ? doc.analysis.risks : [];
     DOM.overviewContent.innerHTML = `
         <div class="company-header">
-            <h1>${doc.analysis.companyName || 'Unknown Company'}</h1>
-            <span class="badge">${doc.analysis.stage || 'N/A'}</span>
+            <h1>${escapeHtml(doc.analysis.companyName || 'Unknown Company')}</h1>
+            <span class="badge">${escapeHtml(doc.analysis.stage || 'N/A')}</span>
             <span class="badge confidence-badge">98% Confidence</span>
         </div>
-        
+
         <div class="overview-section">
             <h3>Executive Summary</h3>
-            <p>${doc.analysis.summary}</p>
+            <p>${escapeHtml(doc.analysis.summary || 'N/A')}</p>
         </div>
 
         <div class="overview-section">
             <h3>Key Highlights</h3>
             <ul class="highlights-list">
-                ${doc.analysis.keyHighlights.map(h => `<li>${h}</li>`).join('')}
+                ${highlights.map(h => `<li>${escapeHtml(h)}</li>`).join('')}
             </ul>
         </div>
 
         <div class="overview-section">
             <h3>Identified Risks</h3>
             <ul class="risks-list">
-                ${doc.analysis.risks.map(r => `<li>${r}</li>`).join('')}
+                ${risks.map(r => `<li>${escapeHtml(r)}</li>`).join('')}
             </ul>
         </div>
     `;
 
     // Metrics Tab
-    const m = doc.analysis.metrics;
+    const m = doc.analysis.metrics || {};
     DOM.metricsContent.innerHTML = `
         <table class="metrics-table">
             <thead>
@@ -363,12 +372,12 @@ function renderAnalysis(doc) {
                 </tr>
             </thead>
             <tbody>
-                <tr><td class="metric-name">Revenue</td><td>${m.revenue}</td></tr>
-                <tr><td class="metric-name">Growth Rate</td><td>${m.growth}</td></tr>
-                <tr><td class="metric-name">Burn Rate</td><td>${m.burnRate}</td></tr>
-                <tr><td class="metric-name">Runway</td><td>${m.runway}</td></tr>
-                <tr><td class="metric-name">Team Size</td><td>${m.teamSize}</td></tr>
-                <tr><td class="metric-name">Market Size (TAM)</td><td>${m.marketSize}</td></tr>
+                <tr><td class="metric-name">Revenue</td><td>${escapeHtml(m.revenue ?? 'N/A')}</td></tr>
+                <tr><td class="metric-name">Growth Rate</td><td>${escapeHtml(m.growth ?? 'N/A')}</td></tr>
+                <tr><td class="metric-name">Burn Rate</td><td>${escapeHtml(m.burnRate ?? 'N/A')}</td></tr>
+                <tr><td class="metric-name">Runway</td><td>${escapeHtml(m.runway ?? 'N/A')}</td></tr>
+                <tr><td class="metric-name">Team Size</td><td>${escapeHtml(m.teamSize ?? 'N/A')}</td></tr>
+                <tr><td class="metric-name">Market Size (TAM)</td><td>${escapeHtml(m.marketSize ?? 'N/A')}</td></tr>
             </tbody>
         </table>
     `;
@@ -431,9 +440,16 @@ async function handleQuestion() {
             })
         });
 
+        if (!response.ok) {
+            throw new Error(`API Error: ${response.status}`);
+        }
+
         const data = await response.json();
-        const answer = data.choices[0].message.content;
-        
+        const answer = data?.choices?.[0]?.message?.content;
+        if (!answer) {
+            throw new Error('Empty response from API');
+        }
+
         // Estimate a page number for realism (mock citation)
         const mockPage = Math.floor(Math.random() * 5) + 1;
         appendMessage('assistant', answer, `${doc.name}, pg ~${mockPage}`);
@@ -450,11 +466,13 @@ function appendMessage(role, text, citation = null) {
     const el = document.createElement('div');
     el.className = `message ${role}`;
     
-    let html = `<p>${text}</p>`;
+    // `text` is either a user question or an LLM answer — both untrusted.
+    // Escape first, then restore newlines as <br> for readable formatting.
+    let html = `<p>${escapeHtml(text).replace(/\n/g, '<br>')}</p>`;
     if (citation) {
-        html += `<span class="citation">Source: ${citation}</span>`;
+        html += `<span class="citation">Source: ${escapeHtml(citation)}</span>`;
     }
-    
+
     el.innerHTML = html;
     DOM.qaHistory.appendChild(el);
     DOM.qaHistory.scrollTop = DOM.qaHistory.scrollHeight;
@@ -473,44 +491,46 @@ function renderCompareTab() {
 
     if (!doc1.analysis || !doc2.analysis) return;
 
-    const m1 = doc1.analysis.metrics;
-    const m2 = doc2.analysis.metrics;
+    const m1 = doc1.analysis.metrics || {};
+    const m2 = doc2.analysis.metrics || {};
+    const name1 = escapeHtml(doc1.analysis.companyName || 'Company A');
+    const name2 = escapeHtml(doc2.analysis.companyName || 'Company B');
 
     let html = `
         <table class="metrics-table">
             <thead>
                 <tr>
                     <th>Metric</th>
-                    <th>${doc1.analysis.companyName || 'Company A'}</th>
-                    <th>${doc2.analysis.companyName || 'Company B'}</th>
+                    <th>${name1}</th>
+                    <th>${name2}</th>
                 </tr>
             </thead>
             <tbody>
                 <tr>
                     <td class="metric-name">Revenue</td>
-                    <td>${m1.revenue}</td>
-                    <td>${m2.revenue}</td>
+                    <td>${escapeHtml(m1.revenue ?? 'N/A')}</td>
+                    <td>${escapeHtml(m2.revenue ?? 'N/A')}</td>
                 </tr>
                 <tr>
                     <td class="metric-name">Growth</td>
-                    <td>${m1.growth}</td>
-                    <td>${m2.growth}</td>
+                    <td>${escapeHtml(m1.growth ?? 'N/A')}</td>
+                    <td>${escapeHtml(m2.growth ?? 'N/A')}</td>
                 </tr>
                 <tr>
                     <td class="metric-name">Burn Rate</td>
-                    <td>${m1.burnRate}</td>
-                    <td>${m2.burnRate}</td>
+                    <td>${escapeHtml(m1.burnRate ?? 'N/A')}</td>
+                    <td>${escapeHtml(m2.burnRate ?? 'N/A')}</td>
                 </tr>
                 <tr>
                     <td class="metric-name">Runway</td>
-                    <td>${m1.runway}</td>
-                    <td>${m2.runway}</td>
+                    <td>${escapeHtml(m1.runway ?? 'N/A')}</td>
+                    <td>${escapeHtml(m2.runway ?? 'N/A')}</td>
                 </tr>
             </tbody>
         </table>
         <div style="margin-top: 24px; padding: 16px; background: var(--bg-secondary); border-radius: 8px;">
             <p style="font-size: 0.875rem; color: var(--text-secondary);">
-                <strong>AI Summary:</strong> Both companies show promising metrics. ${doc1.analysis.companyName || 'The first company'} has ${m1.growth} growth, while ${doc2.analysis.companyName || 'the second'} reports ${m2.growth}. Review burn rates carefully.
+                <strong>AI Summary:</strong> Both companies show promising metrics. ${name1} has ${escapeHtml(m1.growth ?? 'N/A')} growth, while ${name2} reports ${escapeHtml(m2.growth ?? 'N/A')}. Review burn rates carefully.
             </p>
         </div>
     `;
@@ -520,6 +540,21 @@ function renderCompareTab() {
 
 
 // --- Utilities ---
+
+/**
+ * Escape a value for safe interpolation into HTML text/attributes.
+ * All dynamic data (filenames, user questions, LLM responses) MUST pass
+ * through this before being placed into innerHTML to prevent XSS.
+ */
+function escapeHtml(value) {
+    return String(value ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
 function formatSize(bytes) {
     if (bytes === 0) return '0 Bytes';
     const k = 1024;

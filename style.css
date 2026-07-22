@@ -584,3 +584,21 @@ body {
     z-index: 200;
     transition: opacity 0.3s;
 }
+
+
+/* responsive-hardening — added to keep layouts usable on phones/tablets */
+@media (max-width: 820px) {
+  html, body { overflow-x: hidden; }
+  /* Wide data tables scroll horizontally instead of breaking the page */
+  table { display: block !important; width: 100%; overflow-x: auto !important; -webkit-overflow-scrolling: touch; white-space: nowrap; }
+  .table-container, .table-wrap, .table-wrapper { overflow-x: auto; }
+  /* Prevent fixed-width nav/search from forcing page overflow */
+  nav, .navbar, .nav-left, .nav-right, header, .topbar { flex-wrap: wrap !important; }
+  input, textarea, select { max-width: 100% !important; box-sizing: border-box; }
+  /* App shells are flex rows of panels/sidebars — stack them when narrow */
+  .app-container, .layout, .main-layout, .content-wrap, .main-content { flex-direction: column !important; }
+  .sidebar, .left-panel, .right-panel, aside { width: 100% !important; max-width: none !important; }
+}
+@media (max-width: 520px) {
+  .navbar, .nav, header { flex-wrap: wrap; gap: 8px; }
+}
